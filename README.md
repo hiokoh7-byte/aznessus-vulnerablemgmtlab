@@ -1,191 +1,194 @@
-# 🔍 Lab 5 — Vulnerability Scanning with Nessus Essentials
+# Lab 5 — Vulnerability Scanning with Nessus Essentials
 
-Finding weaknesses before an attacker does. This lab walks through standing up Nessus Essentials, running unauthenticated and credentialed scans against a lab server, interpreting CVSS-scored findings, remediating one, and proving the fix worked.
+Standing up Tenable Nessus, scanning a lab server from both an outsider's and an insider's perspective, scoring what gets found, fixing one issue, and proving the fix actually stuck.
 
 ![Nessus](https://img.shields.io/badge/Tenable-Nessus_Essentials-1E88E5)
 ![Cost](https://img.shields.io/badge/Cost-%240-brightgreen)
 ![Status](https://img.shields.io/badge/Status-Complete-success)
 
 ## 🎥 Demo Video
-[Watch the full scan-to-remediation walkthrough →](PASTE_YOUR_LINK_HERE)
+[Watch me run this lab end-to-end →](PASTE_YOUR_LINK_HERE)
+
+## Overview
+
+| Field | Value |
+|---|---|
+| Certification alignment | Security+ · CySA+ · PenTest+ |
+| Tools used | Tenable Nessus Essentials (free, up to 5 IPs) |
+| Time invested | 3–4 hours |
+| Cost | $0 |
+| Career relevance | Vulnerability Analyst, Security Engineer, SOC Analyst, Cloud Security Engineer |
+
+## Why This Matters
+
+No network is fully secure — the real differentiator is whether an organization finds its own weak points before someone outside does. That's the entire discipline of vulnerability management: continuously identifying, scoring, and closing gaps before they turn into incidents.
+
+Nessus is the tool most security teams reach for to do exactly that. It's one of the most recognized names in the industry, yet a surprising number of people entering the field have only heard about it in passing rather than actually run a scan themselves. This lab closes that gap — going through the full lifecycle of finding a weakness, understanding how serious it actually is, fixing it, and confirming the fix worked.
+
+**How this connects to real roles:**
+- A **Vulnerability Analyst** spends their entire day scanning, triaging results, and tracking fixes — this lab is that job in miniature
+- A **Security Engineer** uses CVSS scoring to decide what gets patched first and what can wait
+- A **SOC Analyst** treats a host with known unpatched vulnerabilities as a higher-priority alert the moment it shows up in a case
+- A **Cloud Security Engineer** applies this same logic inside tools like Microsoft Defender for Cloud or AWS Inspector — Nessus just teaches the underlying concept without the cloud abstraction layer in the way
+
+## How This Lab Works
+
+![Diagram showing Nessus Essentials running unauthenticated and credentialed scans against a Windows Server VM, producing findings scored by CVSS, which get remediated and re-scanned to verify the fix](./screenshots/nessus-lab-diagram.svg)
+
+## The Bigger Picture
+
+Vulnerability management isn't a single scan — it's a loop that never really stops:
+
+```
+Scan the environment → Surface findings → Score by severity →
+Decide what matters most → Fix it → Re-scan to confirm → repeat
+```
+
+This lab runs that loop once, start to finish, on a single lab machine — but it's the same cycle a security team runs continuously across an entire company.
 
 ---
 
-## Quick Facts
+## Step-by-Step Setup
 
-| | |
+### Getting Nessus running
+
+1. Head to `tenable.com/products/nessus/nessus-essentials` and click **Get Started for Free**
+2. Enter a name and email — no payment information required at any point
+3. An activation code lands in your inbox — hang onto it, you'll need it during setup
+4. Grab the installer that matches your OS:
+
+| Platform | How to install |
 |---|---|
-| **Tool** | Nessus Essentials — free, up to 5 IPs, no credit card |
-| **Certs this maps to** | Security+ · CySA+ · PenTest+ |
-| **Time invested** | ~3–4 hours |
-| **Cost** | $0 |
-| **Roles this proves out** | Vulnerability Analyst, Security Engineer, SOC Analyst, Cloud Security Engineer |
-
-## Why This Lab Exists
-
-Every network has vulnerabilities. The real question is whether the security team finds them before someone else does. Vulnerability management is the discipline of continuously finding, scoring, prioritizing, and closing security gaps — and Nessus is the tool most security teams reach for first to do it.
-
-Most junior candidates have *heard* of Nessus. Very few have actually run a scan, read a CVSS score, and closed a finding. This lab is that gap, closed.
-
-**Where this shows up on the job:**
-- **Vulnerability Analyst** — scanning, triage, and remediation tracking *is* the role
-- **Security Engineer** — CVSS scoring and severity triage drive infrastructure decisions
-- **SOC Analyst** — a host with known CVEs is a higher-priority alert
-- **Cloud Security Engineer** — this is the same mental model behind Defender for Cloud and AWS Inspector
-
-## The Workflow This Lab Teaches
-
-```
-  SCAN  →  FIND  →  SCORE  →  PRIORITIZE  →  REMEDIATE  →  VERIFY
-   │                                                          │
-   └──────────────────── repeat continuously ◄────────────────┘
-```
-
-This loop — not any single scan — is what a real vulnerability management program looks like. This lab runs it once, start to finish, against a lab VM.
-
----
-
-## Setup Walkthrough
-
-### Phase 1 — Install Nessus Essentials
-
-1. Go to `tenable.com/products/nessus/nessus-essentials`
-2. Click **Get Started for Free**
-3. Enter your name and email (no credit card needed)
-4. Check your inbox for an activation code — save it
-5. Download the Nessus installer for your OS
-
-| OS | Install command |
-|---|---|
-| Windows | Run the `.exe` — installs as a Windows service |
+| Windows | Run the `.exe` — it installs and runs as a background service |
 | Ubuntu/Debian | `sudo dpkg -i Nessus-10.x.x-ubuntu1404_amd64.deb && sudo systemctl start nessusd` |
 | RHEL/CentOS | `sudo rpm -ivh Nessus-10.x.x-el9.x86_64.rpm && sudo systemctl start nessusd` |
-| macOS | Open the `.dmg`, drag to Applications, launch from System Preferences |
+| macOS | Open the `.dmg`, drag Nessus into Applications, launch it from System Preferences |
 
-6. Open `https://localhost:8834`
-7. Choose **Nessus Essentials**, enter your activation code
-8. Create an admin username and password
-9. Wait 10–20 minutes for the initial plugin download to finish
+5. Browse to `https://localhost:8834` — Nessus runs locally over this port
+6. Pick **Nessus Essentials**, drop in the activation code from your email
+7. Set an admin username and password
+8. Sit tight for 10–20 minutes while the plugin library downloads on first launch
 
-> Nessus Essentials covers 5 IPs — plenty for a 2–3 VM home lab. Students get 20 IPs free for a year via `academic.tenable.com`.
+> The free tier covers 5 IP addresses, which comfortably covers a small home lab. Students can get a year of Nessus Essentials Plus (20 IPs) at no cost through `academic.tenable.com`.
 
-### Phase 2 — Run an Unauthenticated Discovery Scan
+### Scanning without credentials — the outsider's view
 
-This is what an outside attacker sees: open ports and exposed services, no login required.
+This first scan shows exactly what someone with zero access could see just by probing the network — open ports, exposed services, nothing more.
 
-10. **New Scan → Basic Network Scan**
-11. Name it `Lab Network Discovery`, target your Lab 1 Windows Server's IP (e.g. `10.0.1.4`)
-12. **Save**, then hit the play button to launch
-13. Let it run 5–10 minutes
-14. Click into the scan to watch results populate
+9. **New Scan → Basic Network Scan**
+10. Call it something like `Lab Network Discovery`, point it at the Windows Server VM's IP from Lab 1 (something like `10.0.1.4`)
+11. Hit **Save**, then press play to kick it off
+12. Give it 5–10 minutes to finish
+13. Open the scan to watch results come in live
 
-> ⚠️ **Only scan systems you own.** Nessus traffic looks identical to an attack from a monitoring tool's perspective. Never scan anything without explicit written permission.
+> ⚠️ Only ever point Nessus at systems you own or have written permission to test. To a network monitoring tool, a Nessus scan is indistinguishable from an actual attack in progress.
 
-### Phase 3 — Run a Credentialed Scan
+### Scanning with credentials — the insider's view
 
-This is the real test — logging into the target and inspecting it from the inside. Expect 5–10x more findings than the unauthenticated scan.
+This is where the real value shows up. Logging in during the scan lets Nessus inspect the system from within — patch levels, installed software, registry misconfigurations — and it typically surfaces 5 to 10 times more findings than the outside-only scan.
 
-15. **New Scan → Basic Network Scan**, name it `Lab Windows Server — Credentialed`
-16. Target: your Windows Server VM's IP
-17. **Credentials tab → Add → Windows → Password**, enter the admin username, password, and domain (`LAB`)
-18. On the Windows Server, enable remote registry access first:
+14. **New Scan → Basic Network Scan** again, this time named something like `Lab Windows Server — Credentialed`
+15. Target the same Windows Server VM IP
+16. Go to the **Credentials** tab → **Add → Windows → Password**, and supply the admin username, password, and the `LAB` domain name
+17. Before launching, flip on Remote Registry on the target machine:
 
 ```powershell
-# Run in PowerShell on the Windows Server
+# Run this in PowerShell on the Windows Server
 Set-Service -Name RemoteRegistry -StartupType Automatic
 Start-Service RemoteRegistry
 
-# If Nessus runs on a separate machine, also allow it through the firewall:
+# If Nessus lives on a different machine, open the firewall for it too:
 netsh advfirewall firewall add rule name='Nessus' dir=in action=allow protocol=tcp localport=445
 ```
 
-19. Launch the scan — expect 15–20 minutes
+18. Kick off the scan — this one takes longer, plan for 15–20 minutes
 
-### Phase 4 — Read the Findings
+### Making sense of the results
 
-Every finding breaks down into: **Synopsis**, **Description**, **Solution**, **CVE ID**, **CVSS Score**, **Risk Factor**, and **Plugin Output** (the actual evidence).
+Every finding Nessus surfaces comes with a **Synopsis**, a fuller **Description**, a **Solution**, a **CVE identifier**, a **CVSS score**, a **Risk Factor**, and raw **Plugin Output** as evidence.
 
-**How severity maps to CVSS:**
+**What the severity scale actually means:**
 
-| Severity | CVSS | What it means | Example |
+| Severity | CVSS Score | Translation | Real example |
 |---|---|---|---|
-| 🔴 Critical | 9.0–10.0 | Remotely exploitable, little/no auth needed — fix now | EternalBlue (MS17-010) |
-| 🟠 High | 7.0–8.9 | Serious impact if exploited — fix in 7–14 days | Unpatched RDP vuln |
-| 🟡 Medium | 4.0–6.9 | Needs specific conditions to exploit — fix in 30 days | Expired SSL cert, weak cipher |
-| 🟢 Low | 0.1–3.9 | Minor impact — fix in routine patch cycles | Missing security headers |
-| ⚪ Info | 0 | Not a vulnerability — just system detail | Open port, OS fingerprint |
+| Critical | 9.0–10.0 | Exploitable remotely with barely any effort — drop everything | EternalBlue (MS17-010) |
+| High | 7.0–8.9 | Serious if exploited — fix within one to two weeks | Unpatched RDP flaw |
+| Medium | 4.0–6.9 | Needs specific conditions to be exploitable — fix within a month | Expired SSL cert, weak cipher suite |
+| Low | 0.1–3.9 | Minor exposure — bundle into normal patch cycles | Missing security headers |
+| Info | 0 | Not actually a vulnerability, just system detail | Detected open port, OS fingerprint |
 
-### Phase 5 — Remediate One Finding and Prove It
+### Closing the loop — fixing something and proving it
 
-20. Pick one Medium or High finding
-21. Follow its **Solution** field exactly
+19. Choose one Medium or High finding to actually resolve
+20. Apply exactly what the **Solution** field recommends
 
-**Common Windows remediations found in this lab:**
+**A few fixes that come up constantly on a Windows target:**
 
 ```powershell
-# Install pending Windows updates
+# Apply pending Windows updates
 Install-Module PSWindowsUpdate -Force
 Get-WindowsUpdate -Install -AcceptAll
 
-# Disable TLS 1.0 (frequently flagged)
+# Turn off TLS 1.0 — one of the most common findings
 New-Item 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.0\Server' -Force
 New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.0\Server' -Name 'Enabled' -Value 0 -PropertyType DWORD -Force
 
-# Disable SMBv1 (frequently flagged)
+# Turn off SMBv1 — also flagged constantly
 Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force
 ```
 
-22. Re-run the credentialed scan
-23. Confirm the finding is gone
+21. Re-run the credentialed scan
+22. Confirm the finding you fixed is actually gone from the results
 
-This re-scan step — proving the fix actually worked instead of just assuming it did — is the part most people skip and the part that matters most.
+Skipping this last step is the most common shortcut people take — and it's the one that matters most. A fix nobody verified is just a guess.
 
-### Phase 6 — Export a Report
+### Getting a report out of it
 
-24. Open the completed scan → **Report → PDF**
-25. Choose **Executive Summary** (for stakeholders) or **Detailed Vulnerabilities** (for remediation tracking)
-26. **Generate Report**
+23. Open the finished scan → **Report → PDF**
+24. Pick **Executive Summary** for a leadership-friendly overview, or **Detailed Vulnerabilities** if the goal is remediation tracking
+25. **Generate Report**
 
 ---
 
-## What I Actually Did
+## What I Actually Did in This Lab
 
-- Installed Nessus Essentials and activated it against a lab VM environment
-- Ran an unauthenticated discovery scan against the Lab 1 Windows Server to see what's exposed externally
-- Ran a credentialed scan using local admin credentials, enabling Remote Registry and the required firewall rule first
-- Compared finding counts between the two scans to see the authenticated-vs-unauthenticated gap firsthand
-- Triaged findings by CVSS score and picked one to remediate
-- Applied the fix, re-scanned, and confirmed the finding cleared
-- Exported both an executive summary and a detailed technical report
+- Registered for Nessus Essentials and got it running against a lab environment
+- Ran an unauthenticated scan against the Lab 1 Windows Server to see what's visible from outside
+- Ran a credentialed scan with local admin access, after first enabling Remote Registry and the matching firewall rule
+- Compared the two result sets directly — the difference between outsider and insider visibility was immediately obvious
+- Picked a finding worth fixing based on its CVSS score, applied the recommended fix, and re-scanned to confirm it cleared
+- Pulled both an executive summary and a detailed technical report out of the finished scan
 
-## Skills This Proves
+## Skills This Demonstrates
 
-| Skill | Why it matters on the job |
+| Skill | Why it's relevant on the job |
 |---|---|
-| Deploying and configuring a scanner | The architecture — scanner, policy, targets — underlies every enterprise vuln program |
-| Running unauthenticated scans | Shows what's visible from outside, the attacker's view |
-| Running credentialed scans | The real standard for internal vulnerability management |
-| Reading CVSS scores | The universal severity language used in every security conversation |
-| Prioritizing findings | Not every "Critical" is equally urgent — exploitability and asset value matter |
-| Running the remediate → verify loop | The actual discipline of vulnerability management, not just finding problems |
-| Exporting reports for different audiences | Executives want risk. Engineers want CVE IDs. Knowing which to hand over is a real skill |
+| Standing up and configuring a scanner | Every enterprise vulnerability program is built on this same scanner/policy/target architecture |
+| Running unauthenticated scans | Shows the outside-in perspective an attacker actually has |
+| Running credentialed scans | The real standard for meaningful internal vulnerability coverage |
+| Reading and applying CVSS scores | The common language every security conversation uses to talk about severity |
+| Prioritizing findings | A high score on an isolated test box matters less than a lower score on something internet-facing |
+| Running the fix-then-verify loop | The actual discipline behind vulnerability management, not just the scanning part |
+| Producing audience-appropriate reports | Leadership wants risk in plain terms; engineers want the CVE and the fix |
 
-## Verification Checklist
+## How I Verified It Worked
 
-- [x] Discovery scan completed with at least Info-level findings (even a hardened box shows something)
-- [x] Credentialed scan returned meaningfully more findings than the unauthenticated scan
-- [x] Remote Registry and firewall prerequisites confirmed before the credentialed scan
-- [x] At least one finding remediated and confirmed gone on re-scan
-- [x] PDF report generated and reviewed
+| Check | Result |
+|---|---|
+| Discovery scan completed | Returned results (even a well-patched box shows Info-level findings) |
+| Credentialed scan completed | Finding count was substantially higher than the unauthenticated pass |
+| Remote Registry + firewall prerequisites | Confirmed active before launching the credentialed scan |
+| Remediation | At least one finding disappeared after the fix and re-scan |
+| Reporting | PDF generated and reviewed for accuracy |
 
-## Field Notes
+## Takeaways
 
-- **Credentialed scans are the whole point.** The unauthenticated scan barely scratches the surface — if you only run that, you're not doing vulnerability management, you're doing reconnaissance.
-- **Remote Registry has to be running *before* the scan**, not something you fix after a failed credentialed scan comes back thin.
-- **Re-scanning after remediation is not optional.** A finding you "fixed" and never re-verified is still an open finding — the whole workflow hinges on proof, not intent.
-- **Severity ≠ urgency by itself.** A Critical finding on an isolated test box is lower priority than a High on something internet-facing. CVSS gives you severity; you still have to apply context.
+- **The credentialed scan is where the real work happens.** An unauthenticated scan alone tells you almost nothing — it's reconnaissance, not vulnerability management.
+- **Remote Registry has to be running before you scan**, not something you troubleshoot after a suspiciously thin result set.
+- **A fix you don't re-verify isn't actually a fix** — it's an assumption. The re-scan is what turns "I think I patched it" into "I confirmed it's patched."
+- **Severity and urgency aren't the same thing.** A Critical on an isolated test box can wait longer than a High on something exposed to the internet — CVSS gives you the starting point, context does the rest.
 
 ## Related Labs
 
-- **Lab 1** — Active Directory deployment (provides the Windows Server VM scanned in this lab)
+- **Lab 1** — Active Directory deployment (the source of the Windows Server VM used in this lab)
 - **Lab 3** — Splunk SIEM & Log Analysis
