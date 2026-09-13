@@ -7,7 +7,7 @@ Standing up Tenable Nessus, scanning a lab server from both an outsider's and an
 ![Status](https://img.shields.io/badge/Status-Complete-success)
 
 ## 🎥 Demo Video
-[Watch me run this lab end-to-end →](PASTE_YOUR_LINK_HERE)
+[Watch me run this lab end-to-end →](https://www.loom.com/share/efaef436db174650b8ff296b4827adcd)
 
 ## Overview
 
@@ -15,6 +15,7 @@ Standing up Tenable Nessus, scanning a lab server from both an outsider's and an
 |---|---|
 | Certification alignment | Security+ · CySA+ · PenTest+ |
 | Tools used | Tenable Nessus Essentials (free, up to 5 IPs) |
+| Environment | Azure VM — Ubuntu 24.04 LTS, Standard_B2as_v2 |
 | Time invested | 3–4 hours |
 | Cost | $0 |
 | Career relevance | Vulnerability Analyst, Security Engineer, SOC Analyst, Cloud Security Engineer |
@@ -50,21 +51,39 @@ This lab runs that loop once, start to finish, on a single lab machine — but i
 
 ## Step-by-Step Setup
 
+### The environment
+
+This lab runs on an **Azure Ubuntu 24.04 LTS VM**, sized **Standard_B2as_v2** — enough CPU and memory headroom to run Nessus comfortably without the scanner itself becoming the bottleneck during a credentialed scan.
+
 ### Getting Nessus running
 
 1. Head to `tenable.com/products/nessus/nessus-essentials` and click **Get Started for Free**
 2. Enter a name and email — no payment information required at any point
 3. An activation code lands in your inbox — hang onto it, you'll need it during setup
-4. Grab the installer that matches your OS:
+
+**Installing on the Azure Ubuntu VM via the command line:**
+
+```bash
+curl --request GET \
+  --url 'https://www.tenable.com/downloads/api/v2/pages/nessus/files/Nessus-10.12.4-ubuntu1604_amd64.deb' \
+  --output 'Nessus-10.12.4-ubuntu1604_amd64.deb'
+
+sudo dpkg -i Nessus-10.12.4-ubuntu1604_amd64.deb
+```
+
+The `curl` command pulls the `.deb` package straight from Tenable's download API rather than going through a browser, which is the more natural path when you're already SSH'd into a headless Ubuntu VM. `dpkg -i` then installs it directly — no desktop environment needed on the VM itself, since the Nessus web UI is what you'll actually interact with afterward.
+
+> If this specific version URL 404s, Tenable has likely shipped a newer release — grab the current `wget`/`curl` command from the Nessus download page and substitute it in.
+
+4. Alternative install methods for other platforms:
 
 | Platform | How to install |
 |---|---|
 | Windows | Run the `.exe` — it installs and runs as a background service |
-| Ubuntu/Debian | `sudo dpkg -i Nessus-10.x.x-ubuntu1404_amd64.deb && sudo systemctl start nessusd` |
 | RHEL/CentOS | `sudo rpm -ivh Nessus-10.x.x-el9.x86_64.rpm && sudo systemctl start nessusd` |
 | macOS | Open the `.dmg`, drag Nessus into Applications, launch it from System Preferences |
 
-5. Browse to `https://localhost:8834` — Nessus runs locally over this port
+5. Start the Nessus service and browse to `https://<VM-IP-or-localhost>:8834` — Nessus runs over this port
 6. Pick **Nessus Essentials**, drop in the activation code from your email
 7. Set an admin username and password
 8. Sit tight for 10–20 minutes while the plugin library downloads on first launch
@@ -142,22 +161,59 @@ Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force
 
 Skipping this last step is the most common shortcut people take — and it's the one that matters most. A fix nobody verified is just a guess.
 
-### Getting a report out of it
+### Documenting the results
 
-23. Open the finished scan → **Report → PDF**
-24. Pick **Executive Summary** for a leadership-friendly overview, or **Detailed Vulnerabilities** if the goal is remediation tracking
-25. **Generate Report**
+23. Open the finished scan — you can either export a report (**Report → PDF**, choosing Executive Summary or Detailed Vulnerabilities) or simply screenshot the key before/after states
+24. If the PDF export isn't cooperating, screenshots of the scan results at each stage tell the same story just as clearly — a discovery scan, a credentialed scan with findings, one finding resolved, and a final clean scan cover the full lifecycle without needing the export feature at all
 
 ---
 
+## Screenshots — The Remediation Progression
+
+*(Images live in a `/screenshots` folder in this repo — see the note at the bottom for how to wire them up.)*
+
+**1. Unauthenticated scan — the outsider's view**
+![Unauthenticated discovery scan results](./screenshots/01-unauthenticated-scan.png)
+> **Takeaway:** With no credentials, the scan surfaced only 8 findings — all Medium or Info, mostly SSL certificate issues (self-signed cert, untrusted cert chain, hostname mismatch). This is genuinely all an outside attacker with zero access would see.
+
+**2. Credentialed scan kicking off**
+![Credentialed scan in progress](./screenshots/02-credentialed-scan-in-progress.png)
+> **Takeaway:** Same target, this time authenticated with local admin credentials over SMB. The scan takes noticeably longer than the unauthenticated pass because Nessus is now inspecting the system from the inside — patch levels, installed software, registry state — not just probing from outside.
+
+**3. Credentialed results — two severe findings surface**
+![Credentialed scan results showing two High severity findings](./screenshots/03-credentialed-scan-two-severe-findings.png)
+> **Takeaway:** The finding count jumped to 62 — nearly 8x the unauthenticated scan — and two High-severity vulnerabilities appeared that were completely invisible without credentials: **WinVerifyTrust Signature Validation (CVE-2013-3900)** at CVSS 8.8, and a **Windows Package Manager elevation-of-privilege flaw (CVE-2026-68821)** at CVSS 7.3. This is the clearest proof in the whole lab of why credentialed scanning is the real standard.
+
+**4. Full vulnerability list — my executive summary substitute**
+![Full list of scanned vulnerabilities standing in for the executive summary export](./screenshots/04-full-vulnerability-list-exec-summary-substitute.png)
+> **Takeaway:** Nessus Essentials doesn't support PDF export, so this full vulnerability breakdown stands in as the executive-summary equivalent — the complete picture of severity distribution and finding families from the initial credentialed scan, in one view.
+
+**5. First remediation — one severe finding resolved**
+![Scan results after remediating the first severe finding](./screenshots/05-first-remediation-one-severe-resolved.png)
+> **Takeaway:** After patching the WinVerifyTrust signature validation issue and re-scanning, the finding count dropped to 60 and that CVE no longer appears. The Windows Package Manager High-severity finding is still present — one down, one to go.
+
+**6. Final verification scan in progress**
+![Final verification scan running after remediating all findings](./screenshots/06-final-verification-scan-in-progress.png)
+> **Takeaway:** Re-running the scan one more time after resolving the second finding (the WinGet elevation-of-privilege issue) to confirm both severe vulnerabilities are actually gone — not just assumed fixed.
+
+**7. Final scan — both severe findings resolved**
+![Final scan results with zero High or Critical findings remaining](./screenshots/07-final-scan-all-severe-resolved.png)
+> **Takeaway:** Down to 59 findings, with zero Critical or High severity items remaining — only routine Info-level and a handful of Medium SSL findings left. This closes the loop: both vulnerabilities found, fixed, and independently re-verified.
+
+**How to add these when ready:**
+1. Create a `screenshots` folder in the repo root (same approach as the other labs)
+2. Upload the seven images using the filenames above
+3. Replace your `README.md` with this version — the image links already match
+
 ## What I Actually Did in This Lab
 
-- Registered for Nessus Essentials and got it running against a lab environment
-- Ran an unauthenticated scan against the Lab 1 Windows Server to see what's visible from outside
-- Ran a credentialed scan with local admin access, after first enabling Remote Registry and the matching firewall rule
-- Compared the two result sets directly — the difference between outsider and insider visibility was immediately obvious
-- Picked a finding worth fixing based on its CVSS score, applied the recommended fix, and re-scanned to confirm it cleared
-- Pulled both an executive summary and a detailed technical report out of the finished scan
+- Registered for Nessus Essentials and got it running on an Azure Ubuntu VM
+- Ran an unauthenticated scan against the lab VM, returning only 8 low-severity findings — mostly SSL certificate issues
+- Ran a credentialed scan with local admin access, which returned 62 findings — nearly 8x the unauthenticated result
+- Identified two High-severity vulnerabilities that only appeared once authenticated: WinVerifyTrust Signature Validation (CVE-2013-3900, CVSS 8.8) and a Windows Package Manager elevation-of-privilege flaw (CVE-2026-68821, CVSS 7.3)
+- Remediated the WinVerifyTrust finding first, re-scanned, and confirmed it cleared while the second finding remained
+- Remediated the Windows Package Manager finding, ran a final verification scan, and confirmed both severe findings were resolved
+- Documented the full progression with screenshots at each stage, since PDF export isn't available in Nessus Essentials
 
 ## Skills This Demonstrates
 
@@ -175,11 +231,11 @@ Skipping this last step is the most common shortcut people take — and it's the
 
 | Check | Result |
 |---|---|
-| Discovery scan completed | Returned results (even a well-patched box shows Info-level findings) |
-| Credentialed scan completed | Finding count was substantially higher than the unauthenticated pass |
-| Remote Registry + firewall prerequisites | Confirmed active before launching the credentialed scan |
-| Remediation | At least one finding disappeared after the fix and re-scan |
-| Reporting | PDF generated and reviewed for accuracy |
+| Discovery scan completed | Returned 8 findings — all Medium/Info, mostly SSL certificate issues |
+| Credentialed scan completed | Returned 62 findings, including 2 High-severity vulnerabilities invisible in the unauthenticated pass |
+| First remediation verified | Re-scan showed 60 findings, WinVerifyTrust (CVE-2013-3900) resolved, WinGet finding still present |
+| Second remediation verified | Final scan showed 59 findings, zero Critical/High remaining |
+| Documentation | Full progression captured in screenshots, from initial scan to clean final scan |
 
 ## Takeaways
 
@@ -187,6 +243,10 @@ Skipping this last step is the most common shortcut people take — and it's the
 - **Remote Registry has to be running before you scan**, not something you troubleshoot after a suspiciously thin result set.
 - **A fix you don't re-verify isn't actually a fix** — it's an assumption. The re-scan is what turns "I think I patched it" into "I confirmed it's patched."
 - **Severity and urgency aren't the same thing.** A Critical on an isolated test box can wait longer than a High on something exposed to the internet — CVSS gives you the starting point, context does the rest.
+
+## Lab Summary
+
+I scanned a Windows VM on my Azure lab network, first without credentials and then with local admin credentials over SMB, to see the gap between an outsider's view and a real internal assessment. The unauthenticated scan returned only 8 low-impact findings, but the credentialed scan surfaced 62 — including two High-severity vulnerabilities that were completely invisible without authentication: a WinVerifyTrust signature validation flaw (CVE-2013-3900, CVSS 8.8) and a Windows Package Manager elevation-of-privilege issue (CVE-2026-68821, CVSS 7.3). I remediated both, one at a time, re-scanning after each fix to confirm it actually resolved — first watching the WinVerifyTrust finding disappear, then the WinGet finding after the second fix. The final scan came back with zero Critical or High findings, leaving only routine Info-level results and a couple of Medium-severity SSL certificate items. That progression — scan, find, fix, verify — is the complete vulnerability management lifecycle this lab was built to demonstrate, not just a one-time scan result.
 
 ## Related Labs
 
