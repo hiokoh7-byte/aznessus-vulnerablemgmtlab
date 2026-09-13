@@ -7,7 +7,7 @@ Standing up Tenable Nessus, scanning a lab server from both an outsider's and an
 ![Status](https://img.shields.io/badge/Status-Complete-success)
 
 ## 🎥 Demo Video
-[Watch me run this lab end-to-end →](https://www.loom.com/share/efaef436db174650b8ff296b4827adcd)
+[Watch me run this lab →](https://www.loom.com/share/efaef436db174650b8ff296b4827adcd)
 
 ## Overview
 
